@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 
 
 User = get_user_model()
@@ -110,8 +111,49 @@ class Ticket(models.Model):
         related_name="tickets"
     )
 
+    @staticmethod
+    def validate_ticket(cargo, seat, train, error_to_raise):
+        for (attr_value, attr_name, train_attr_name) in [
+            (cargo, "cargo", "cargo_num"),
+            (seat, "seat", "places_in_cargo")
+        ]:
+            attr_count = getattr(train, train_attr_name)
+            if not 1 <= attr_value <= attr_count:
+                raise error_to_raise(
+                    {
+                        train_attr_name: f"{train_attr_name} "
+                        f"number must be in available range: "
+                        f"(1, {train_attr_name}): "
+                        f"(1, {attr_count})"
+                    }
+                )
+
+    def clean(self):
+        Ticket.validate_ticket(
+            self.cargo,
+            self.seat,
+            self.journey.train,
+            ValidationError
+        )
+
+    def save(
+        self,
+        *,
+        force_insert = False,
+        force_update = False,
+        using = None,
+        update_fields = None,
+    ):
+        self.full_clean()
+        return super(Ticket, self).save(
+            force_insert,
+            force_update,
+            using,
+            update_fields
+        )
+
     def __str__(self):
         return f"Ticket #{self.id} - Seat {self.seat} (Journey {self.journey_id})"
 
     class Meta:
-        unique_together = ("journey", "seat")
+        unique_together = ("journey", "cargo", "seat")
