@@ -57,7 +57,50 @@ class StationViewSet(
     mixins.ListModelMixin,
     viewsets.GenericViewSet
 ):
-    queryset = Crew.objects.all()
-    serializer_class = CrewSerializer
+    queryset = Station.objects.all()
+    serializer_class = StationSerializer
     permission_classes = ()
 
+
+class RouteViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet
+):
+    queryset = Route.objects.prefetch_related(
+        "source", "destination"
+    )
+    permission_classes = ()
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return RouteListSerializer
+
+        if self.action == "retrieve":
+            return RouteDetailSerializer
+
+        return RouteSerializer
+
+
+class TrainViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet
+):
+    queryset = Train.objects.prefetch_related(
+        "train_type"
+    )
+    permission_classes = ()
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return TrainListSerializer
+
+        if self.action == "retrieve":
+            return TrainDetailSerializer
+
+        return TrainSerializer
+
+    # add lookup functionality
