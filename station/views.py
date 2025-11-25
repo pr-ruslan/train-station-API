@@ -1,6 +1,11 @@
 from datetime import datetime
 from django.db.models import Count, F, ExpressionWrapper, IntegerField
 from rest_framework import viewsets, mixins
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.viewsets import GenericViewSet
+from django.utils.dateparse import parse_datetime, parse_date
+
 
 from station.models import (
     Station,
@@ -10,7 +15,6 @@ from station.models import (
     Crew,
     Journey,
     Order,
-    Ticket,
 )
 from station.serializers import (
     CrewSerializer,
@@ -24,13 +28,9 @@ from station.serializers import (
     RouteDetailSerializer,
     OrderSerializer,
     OrderListSerializer,
-    UserSerializer,
-    OrderDetailSerializer,
     JourneySerializer,
     JourneyListSerializer,
     JourneyDetailSerializer,
-    TicketSerializer,
-    TicketListSerializer
 )
 
 
@@ -41,7 +41,7 @@ class TrainTypeViewSet(
     ):
     queryset = TrainType.objects.all()
     serializer_class = TrainTypeSerializer
-    permission_classes = ()
+    permission_classes = (IsAuthenticated,)
 
 
 class CrewViewSet(
@@ -51,7 +51,7 @@ class CrewViewSet(
 ):
     queryset = Crew.objects.all()
     serializer_class = CrewSerializer
-    permission_classes = ()
+    permission_classes = (IsAuthenticated,)
 
 
 class StationViewSet(
@@ -61,11 +61,11 @@ class StationViewSet(
 ):
     queryset = Station.objects.all()
     serializer_class = StationSerializer
-    permission_classes = ()
+    permission_classes = (IsAuthenticated,)
 
     def get_queryset(self):
         name = self.request.query_params.get("name")
-        queryset = self.queryset
+        queryset = Station.objects.all()
         if name:
            queryset = queryset.filter(name__icontains=name)
         return queryset
@@ -76,10 +76,10 @@ class RouteViewSet(
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet
 ):
-    queryset = Route.objects.prefetch_related(
+    queryset = Route.objects.select_related(
         "source", "destination"
     )
-    permission_classes = ()
+    permission_classes = (IsAuthenticated,)
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -97,10 +97,7 @@ class TrainViewSet(
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet
 ):
-    queryset = Train.objects.prefetch_related(
-        "train_type"
-    )
-    permission_classes = ()
+    permission_classes = (IsAuthenticated,)
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -112,13 +109,51 @@ class TrainViewSet(
         return TrainSerializer
 
     def get_queryset(self):
-        queryset = self.queryset
+        queryset = Train.objects.select_related(
+        "train_type"
+        )
         name = self.request.query_params.get("name")
 
         if name:
             queryset = queryset.filter(name__icontains=name)
 
         return queryset
+
+
+class OrderPagination(PageNumberPagination):
+    page_size = 10
+    max_page_size = 100
+
+
+class OrderViewSet(mixins.CreateModelMixin,
+                   mixins.ListModelMixin,
+                   GenericViewSet
+                  ):
+    queryset = Order.objects.prefetch_related(
+        "tickets",
+        "tickets__journey",
+        "tickets__journey__route__source",
+        "tickets__journey__route__destination",
+        "tickets__journey__train",
+        "tickets__journey__train__train_type",
+    )
+    serializer_class = OrderSerializer
+    pagination_class = OrderPagination
+    permission_classes = (IsAuthenticated,)
+
+    def get_queryset(self):
+        return self.queryset.filter(user=self.request.user)
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return OrderListSerializer
+
+        return OrderSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
 
 class JourneyViewSet(viewsets.ModelViewSet):
     queryset = (
@@ -145,8 +180,14 @@ class JourneyViewSet(viewsets.ModelViewSet):
         return JourneySerializer
 
     def get_queryset(self):
-        def parse_date(date_string):
-            return datetime.strptime(date_string, "%Y-%m-%d")
+        def get_date(date_string, end=False):
+            date = parse_date(date_string)
+            if not date:
+                return None
+            return datetime.combine(
+                date,
+                datetime.max.time() if end else datetime.min.time()
+            )
 
         queryset = self.queryset.annotate(
             total_seats=ExpressionWrapper(
@@ -183,19 +224,19 @@ class JourneyViewSet(viewsets.ModelViewSet):
             )
         if depart_from:
             queryset = queryset.filter(
-                departure_time__gte=parse_date(depart_from)
+                departure_time__gte=get_date(depart_from)
             )
         if depart_to:
             queryset = queryset.filter(
-                departure_time__lte=parse_date(depart_to)
+                departure_time__lte=get_date(depart_to)
             )
         if arrive_from:
             queryset = queryset.filter(
-                arrival_time__gte=parse_date(arrive_from)
+                arrival_time__gte=get_date(arrive_from)
             )
         if arrive_to:
             queryset = queryset.filter(
-                arrival_time__lte=parse_date(arrive_to)
+                arrival_time__lte=get_date(arrive_to)
             )
 
         return queryset

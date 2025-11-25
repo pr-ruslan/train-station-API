@@ -1,3 +1,4 @@
+from django.db import transaction
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
@@ -88,31 +89,6 @@ class RouteDetailSerializer(RouteListSerializer):
     destination = StationSerializer(read_only=True)
 
 
-class OrderSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Order
-        fields = ("id",
-                  "created_at",
-                  "user")
-
-
-class OrderListSerializer(OrderSerializer):
-    user = serializers.SlugRelatedField(
-        read_only=True,
-        slug_field="email"
-    )
-
-
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ("email", "username")
-
-
-class OrderDetailSerializer(OrderListSerializer):
-    user = UserSerializer(read_only=True)
-
-
 class JourneySerializer(serializers.ModelSerializer):
     class Meta:
         model = Journey
@@ -156,6 +132,31 @@ class TicketSerializer(serializers.ModelSerializer):
 
 class TicketListSerializer(TicketSerializer):
     journey = JourneyListSerializer(many=False, read_only=True)
-    order = OrderListSerializer(many=False, read_only=True)
 
+
+class OrderSerializer(serializers.ModelSerializer):
+    tickets = TicketSerializer(many=True,
+                               read_only=False,
+                               allow_empty=False)
+    class Meta:
+        model = Order
+        fields = ("id",
+                  "created_at",
+                  "user")
+        read_only_fields = ("user",)
+
+    def create(self, validated_data):
+        with transaction.atomic():
+            tickets_data = validated_data.pop("tickets")
+            order = Order.objects.create(**validated_data)
+            for ticket_data in tickets_data:
+                Ticket.objects.create(order=order, **ticket_data)
+            return order
+
+
+class OrderListSerializer(OrderSerializer):
+    tickets = TicketListSerializer(
+        read_only=True,
+        many=True
+    )
 
