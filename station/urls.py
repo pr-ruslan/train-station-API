@@ -10,7 +10,6 @@ from station.views import (
     OrderViewSet,
     JourneyViewSet
 )
-from train_station.urls import urlpatterns
 
 router = routers.DefaultRouter()
 router.register("train_types", TrainTypeViewSet)
@@ -21,6 +20,6 @@ router.register("trains", TrainViewSet)
 router.register("orders", OrderViewSet)
 router.register("journey", JourneyViewSet)
 
-urlpatterns = ["", include(router.urls)]
+urlpatterns = [path("", include(router.urls))]
 
 app_name = "station"

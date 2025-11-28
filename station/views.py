@@ -98,6 +98,7 @@ class TrainViewSet(
     viewsets.GenericViewSet
 ):
     permission_classes = (IsAuthenticated,)
+    queryset = Train.objects.all()
 
     def get_serializer_class(self):
         if self.action == "list":
