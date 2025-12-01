@@ -1,13 +1,87 @@
-# Byte-compiled / optimized / DLL files
+# ============================
+# Python
+# ============================
 __pycache__/
-*.py[codz]
-*$py.class
-*.sqlite3
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.swp
+*.ruff_cache/
+*.mypy_cache/
+*.pytest_cache/
+*.coverage
+.coverage.*
+.pytest_cache/
+pip-log.txt
 
-# Environments
-.env
-.envrc
-.venv
-env/
+# ============================
+# Virtual environment
+# ============================
 venv/
+.venv/
+env/
+.env/
+ENV/
+*.egg-info/
 
+# ============================
+# IDE files
+# ============================
+# PyCharm
+.idea/
+# VSCode
+.vscode/
+*.code-workspace
+
+# ============================
+# Django / DRF
+# ============================
+db.sqlite3
+db.sqlite3-journal
+
+# Static & Media (generated)
+staticfiles/
+static/
+media/
+mediafiles/
+
+# Migrations (optional for early-stage projects)
+# Uncomment ONLY if you want to reset migrations often:
+# */migrations/*
+# !*/migrations/__init__.py
+
+# ============================
+# Environment variables
+# ============================
+.env
+*.env
+
+# ============================
+# Logs
+# ============================
+*.log
+logs/
+gunicorn-error.log
+gunicorn-access.log
+
+# ============================
+# Docker
+# ============================
+# If using Docker
+docker-compose.override.yml
+*.pid
+
+# ============================
+# SQLite backups
+# ============================
+*.sqlite3
+*.sqlite3-journal
+
+# ============================
+# OS generated trash
+# ============================
+Thumbs.db
+.DS_Store
+ehthumbs.db
+Icon?
