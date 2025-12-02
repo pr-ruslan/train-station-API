@@ -4,7 +4,13 @@ from rest_framework import viewsets, mixins
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import GenericViewSet
-from django.utils.dateparse import parse_datetime, parse_date
+from django.utils.dateparse import parse_date
+from drf_spectacular.utils import (
+    extend_schema,
+    extend_schema_view,
+    OpenApiParameter,
+    OpenApiTypes,
+)
 
 
 from station.models import (
@@ -34,6 +40,10 @@ from station.serializers import (
 )
 
 
+@extend_schema_view(
+    list=extend_schema(summary="List train types"),
+    create=extend_schema(summary="Create train type"),
+)
 class TrainTypeViewSet(
     mixins.CreateModelMixin,
     mixins.ListModelMixin,
@@ -44,6 +54,10 @@ class TrainTypeViewSet(
     permission_classes = (IsAuthenticated,)
 
 
+@extend_schema_view(
+    list=extend_schema(summary="List crews"),
+    create=extend_schema(summary="Create crew"),
+)
 class CrewViewSet(
     mixins.CreateModelMixin,
     mixins.ListModelMixin,
@@ -54,6 +68,20 @@ class CrewViewSet(
     permission_classes = (IsAuthenticated,)
 
 
+@extend_schema_view(
+    list=extend_schema(
+        summary="List stations",
+        parameters=[
+            OpenApiParameter(
+                name="name",
+                description="Search stations by partial name",
+                required=False,
+                type=OpenApiTypes.STR,
+            ),
+        ],
+    ),
+    create=extend_schema(summary="Create a station"),
+)
 class StationViewSet(
     mixins.CreateModelMixin,
     mixins.ListModelMixin,
@@ -70,6 +98,16 @@ class StationViewSet(
            queryset = queryset.filter(name__icontains=name)
         return queryset
 
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="List routes",
+    ),
+    retrieve=extend_schema(
+        summary="Retrieve route details",
+    ),
+    create=extend_schema(summary="Create a route"),
+)
 class RouteViewSet(
     mixins.CreateModelMixin,
     mixins.ListModelMixin,
@@ -91,6 +129,21 @@ class RouteViewSet(
         return RouteSerializer
 
 
+@extend_schema_view(
+    list=extend_schema(
+        summary="List trains",
+        parameters=[
+            OpenApiParameter(
+                name="name",
+                description="Filter trains by partial name",
+                required=False,
+                type=OpenApiTypes.STR,
+            )
+        ],
+    ),
+    retrieve=extend_schema(summary="Retrieve train details"),
+    create=extend_schema(summary="Create a train"),
+)
 class TrainViewSet(
     mixins.CreateModelMixin,
     mixins.ListModelMixin,
@@ -126,6 +179,10 @@ class OrderPagination(PageNumberPagination):
     max_page_size = 100
 
 
+@extend_schema_view(
+    list=extend_schema(summary="List orders for current user"),
+    create=extend_schema(summary="Create an order"),
+)
 class OrderViewSet(mixins.CreateModelMixin,
                    mixins.ListModelMixin,
                    GenericViewSet
@@ -155,7 +212,31 @@ class OrderViewSet(mixins.CreateModelMixin,
         serializer.save(user=self.request.user)
 
 
-
+@extend_schema_view(
+    list=extend_schema(
+        summary="List journeys with filters",
+        parameters=[
+            OpenApiParameter("tickets_left", OpenApiTypes.INT, False,
+                             description="Filter by remaining tickets (>=)"),
+            OpenApiParameter("source", OpenApiTypes.STR, False,
+                             description="Filter by departure station name"),
+            OpenApiParameter("dest", OpenApiTypes.STR, False,
+                             description="Filter by destination station name"),
+            OpenApiParameter("depart_from", OpenApiTypes.DATE, False,
+                             description="Departure >= date (YYYY-MM-DD)"),
+            OpenApiParameter("depart_to", OpenApiTypes.DATE, False,
+                             description="Departure <= date (YYYY-MM-DD)"),
+            OpenApiParameter("arrive_from", OpenApiTypes.DATE, False,
+                             description="Arrival >= date"),
+            OpenApiParameter("arrive_to", OpenApiTypes.DATE, False,
+                             description="Arrival <= date"),
+        ],
+    ),
+    retrieve=extend_schema(summary="Retrieve a journey"),
+    create=extend_schema(summary="Create a journey"),
+    update=extend_schema(exclude=True),
+    partial_update=extend_schema(exclude=True),
+)
 class JourneyViewSet(viewsets.ModelViewSet):
     queryset = (
         Journey.objects
