@@ -11,7 +11,6 @@ from station.models import (
     Journey,
     Order,
     Ticket,
-    User
 )
 
 
@@ -142,7 +141,8 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = ("id",
                   "created_at",
-                  "user")
+                  "user",
+                  "tickets")
         read_only_fields = ("user",)
 
     def create(self, validated_data):
