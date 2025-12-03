@@ -99,6 +99,17 @@ class JourneySerializer(serializers.ModelSerializer):
             "arrival_time"
         )
 
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        departure = data.get("departure_time")
+        arrival = data.get("arrival_time")
+        if departure and arrival:
+            if departure >= arrival:
+                raise serializers.ValidationError({
+                    "arrival_time": "Arrival time must be after departure time."
+                })
+
+        return data
 
 class JourneyListSerializer(JourneySerializer):
     route = RouteListSerializer(read_only=True)
