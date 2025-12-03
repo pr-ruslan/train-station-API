@@ -1,7 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
-
 from rest_framework.test import APIClient
 from rest_framework import status
 
@@ -12,6 +11,7 @@ from station.models import (
     Route,
     Journey,
     Order,
+    Ticket,
 )
 from station.serializers import (
     TrainListSerializer,
@@ -23,39 +23,34 @@ JOURNEY_URL = reverse("station:journey-list")
 
 
 def sample_train(**params):
-    train_type = TrainType.objects.create(
-        name="maglev"
-    )
+    train_type = TrainType.objects.create(name="maglev")
     defaults = {
         "name": "Sample train",
         "cargo_num": 10,
         "places_in_cargo": 20,
-        "train_type": train_type
+        "train_type": train_type,
     }
     defaults.update(params)
-
     return Train.objects.create(**defaults)
 
 
-def sample_journey(**params):
-    route = Route.objects.create(
-        name="Blue",
-    )
-    train = sample_train()
+def sample_route(**params):
+    s1 = Station.objects.create(name="AAA", latitude=0, longitude=0)
+    s2 = Station.objects.create(name="BBB", latitude=1, longitude=1)
     defaults = {
-        "route": route,
-        "train": train,
-        "departure_time": "2025-06-02 14:00:00",
-        "arrival_time": "2025-06-03 14:00:00",
+        "source": s1,
+        "destination": s2,
+        "distance": 100,
     }
     defaults.update(params)
-
-    return Journey.objects.create(**defaults)
+    return Route.objects.create(**defaults)
 
 
 def detail_url(train_id):
     return reverse("station:train-detail", args=[train_id])
 
+
+# ----------------------- UNAUTH TESTS -----------------------
 
 class UnauthenticatedStationApiTests(TestCase):
     def setUp(self):
@@ -66,195 +61,175 @@ class UnauthenticatedStationApiTests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
+# ----------------------- TRAIN TESTS -----------------------
+
 class AuthenticatedTrainApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = get_user_model().objects.create_user(
-            "test@test.com",
-            "testpass",
+            "test@test.com", "testpass"
         )
         self.client.force_authenticate(self.user)
 
-        def test_list_trains(self):
-            """Test retrieving a list of trains"""
-            sample_train()
-            sample_train(name="Another train")
+    def test_list_trains(self):
+        sample_train()
+        sample_train(name="Another train")
 
-            res = self.client.get(TRAIN_URL)
+        res = self.client.get(TRAIN_URL)
 
-            trains = Train.objects.all().order_by("id")
-            serializer = TrainListSerializer(trains, many=True)
+        trains = Train.objects.all().order_by("id")
+        serializer = TrainListSerializer(trains, many=True)
 
-            self.assertEqual(res.status_code, status.HTTP_200_OK)
-            self.assertEqual(res.data, serializer.data)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, serializer.data)
 
-        def test_retrieve_train_detail(self):
-            """Test retrieving a train detail"""
-            train = sample_train()
+    def test_retrieve_train_detail(self):
+        train = sample_train()
 
-            url = detail_url(train.id)
-            res = self.client.get(url)
+        url = detail_url(train.id)
+        res = self.client.get(url)
 
-            serializer = TrainDetailSerializer(train)
-            self.assertEqual(res.status_code, status.HTTP_200_OK)
-            self.assertEqual(res.data, serializer.data)
+        serializer = TrainDetailSerializer(train)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, serializer.data)
 
-    class JourneyApiTests(TestCase):
-        """Tests for Journey endpoint"""
 
-        def setUp(self):
-            self.client = APIClient()
-            self.user = get_user_model().objects.create_user(
-                "user@test.com",
-                "testpass",
-            )
-            self.client.force_authenticate(self.user)
+# ----------------------- JOURNEY CREATE TESTS -----------------------
 
-        def test_create_journey_successful(self):
-            """Test creating a simple journey"""
-            train = sample_train()
-            route = Route.objects.create(name="Route 1")
+class JourneyApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = get_user_model().objects.create_user(
+            "user@test.com", "testpass"
+        )
+        self.client.force_authenticate(self.user)
 
-            payload = {
-                "train": train.id,
-                "route": route.id,
-                "departure_time": "2025-06-01T10:00:00Z",
-                "arrival_time": "2025-06-01T12:00:00Z",
-            }
+    def test_create_journey_successful(self):
+        train = sample_train()
+        route = sample_route()
 
-            res = self.client.post(JOURNEY_URL, payload, format="json")
-            self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        payload = {
+            "train": train.id,
+            "route": route.id,
+            "departure_time": "2025-06-01T10:00:00Z",
+            "arrival_time": "2025-06-01T12:00:00Z",
+        }
 
-            journey = Journey.objects.get(id=res.data["id"])
-            self.assertEqual(journey.train.id, payload["train"])
-            self.assertEqual(journey.route.id, payload["route"])
+        res = self.client.post(JOURNEY_URL, payload, format="json")
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
 
-        def test_journey_invalid_time(self):
-            """Test that arrival time must be after departure time"""
-            train = sample_train()
-            route = Route.objects.create(name="Route 1")
+        journey = Journey.objects.get(id=res.data["id"])
+        self.assertEqual(journey.train.id, payload["train"])
+        self.assertEqual(journey.route.id, payload["route"])
 
-            payload = {
-                "train": train.id,
-                "route": route.id,
-                "departure_time": "2025-06-01T14:00:00Z",
-                "arrival_time": "2025-06-01T10:00:00Z",
-            }
+    def test_journey_invalid_time(self):
+        train = sample_train()
+        route = sample_route()
 
-            res = self.client.post(JOURNEY_URL, payload, format="json")
+        payload = {
+            "train": train.id,
+            "route": route.id,
+            "departure_time": "2025-06-01T14:00:00Z",
+            "arrival_time": "2025-06-01T10:00:00Z",
+        }
 
-            self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
-            self.assertIn("arrival_time", res.data)
+        res = self.client.post(JOURNEY_URL, payload, format="json")
 
-    class JourneyFilterTests(TestCase):
-        def setUp(self):
-            self.client = APIClient()
-            self.user = get_user_model().objects.create_user(
-                "user@test.com",
-                "testpass",
-            )
-            self.client.force_authenticate(self.user)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("arrival_time", res.data)
 
-            # Create stations
-            self.s1 = Station.objects.create(
-                name="Kyiv", latitude=0, longitude=0
-            )
-            self.s2 = Station.objects.create(
-                name="Lviv", latitude=1, longitude=1
-            )
-            self.s3 = Station.objects.create(
-                name="Odesa", latitude=2, longitude=2
-            )
 
-            # Create routes
-            self.r1 = Route.objects.create(
-                name="R1", source=self.s1, destination=self.s2
-            )
-            self.r2 = Route.objects.create(
-                name="R2", source=self.s2, destination=self.s3
-            )
+# ----------------------- JOURNEY FILTER TESTS -----------------------
 
-            # Create trains
-            self.train = sample_train()
+class JourneyFilterTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = get_user_model().objects.create_user(
+            "user@test.com", "testpass"
+        )
+        self.client.force_authenticate(self.user)
 
-            # Create journeys
-            self.j1 = Journey.objects.create(
-                route=self.r1,
-                train=self.train,
-                departure_time="2025-06-01T10:00:00Z",
-                arrival_time="2025-06-01T15:00:00Z",
-            )
-            self.j2 = Journey.objects.create(
-                route=self.r2,
-                train=self.train,
-                departure_time="2025-06-10T08:00:00Z",
-                arrival_time="2025-06-10T14:00:00Z",
-            )
+        # Stations
+        self.s1 = Station.objects.create(name="Kyiv", latitude=0, longitude=0)
+        self.s2 = Station.objects.create(name="Lviv", latitude=1, longitude=1)
+        self.s3 = Station.objects.create(name="Odesa", latitude=2, longitude=2)
 
-        def test_filter_by_source(self):
-            """Test filtering journeys by source station name."""
-            res = self.client.get(JOURNEY_URL, {"source": "kyiv"})
+        # Routes
+        self.r1 = Route.objects.create(
+            source=self.s1, destination=self.s2, distance=500
+        )
+        self.r2 = Route.objects.create(
+            source=self.s2, destination=self.s3, distance=700
+        )
 
-            self.assertEqual(len(res.data), 1)
-            self.assertEqual(res.data[0]["id"], self.j1.id)
+        # Train
+        self.train = sample_train()
 
-        def test_filter_by_destination(self):
-            """Test filtering journeys by destination station name."""
-            res = self.client.get(JOURNEY_URL, {"dest": "odesa"})
+        # Journeys
+        self.j1 = Journey.objects.create(
+            route=self.r1,
+            train=self.train,
+            departure_time="2025-06-01T10:00:00Z",
+            arrival_time="2025-06-01T15:00:00Z",
+        )
+        self.j2 = Journey.objects.create(
+            route=self.r2,
+            train=self.train,
+            departure_time="2025-06-10T08:00:00Z",
+            arrival_time="2025-06-10T14:00:00Z",
+        )
 
-            self.assertEqual(len(res.data), 1)
-            self.assertEqual(res.data[0]["id"], self.j2.id)
+    def test_filter_by_source(self):
+        res = self.client.get(JOURNEY_URL, {"source": "kyiv"})
 
-        def test_filter_by_departure_range(self):
-            """Test filtering journeys by departure_time range."""
-            res = self.client.get(
-                JOURNEY_URL,
-                {"depart_from": "2025-06-05", "depart_to": "2025-06-15"},
-            )
+        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]["id"], self.j1.id)
 
-            self.assertEqual(len(res.data), 1)
-            self.assertEqual(res.data[0]["id"], self.j2.id)
+    def test_filter_by_destination(self):
+        res = self.client.get(JOURNEY_URL, {"dest": "odesa"})
 
-        def test_filter_by_arrival_range(self):
-            """Test filtering journeys by arrival_time range."""
-            res = self.client.get(
-                JOURNEY_URL,
-                {"arrive_from": "2025-06-01", "arrive_to": "2025-06-02"},
-            )
+        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]["id"], self.j2.id)
 
-            self.assertEqual(len(res.data), 1)
-            self.assertEqual(res.data[0]["id"], self.j1.id)
+    def test_filter_by_departure_range(self):
+        res = self.client.get(
+            JOURNEY_URL,
+            {"depart_from": "2025-06-05", "depart_to": "2025-06-15"},
+        )
+        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]["id"], self.j2.id)
 
-        def test_filter_by_tickets_left(self):
-            """Test filtering by number of free seats."""
-            # j1 will have 1 ticket sold
-            Order.objects.create(
-                journey=self.j1, user=self.user, seat_number=1
-            )
+    def test_filter_by_arrival_range(self):
+        res = self.client.get(
+            JOURNEY_URL,
+            {"arrive_from": "2025-06-01", "arrive_to": "2025-06-02"},
+        )
+        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]["id"], self.j1.id)
 
-            # Request journeys with at least full capacity minus 1 ticket
-            min_free = (
-                    self.train.cargo_num * self.train.places_in_cargo - 1
-            )
+    def test_filter_by_tickets_left(self):
+        # Create order and ticket for j1
+        order = Order.objects.create(user=self.user)
+        Ticket.objects.create(
+            order=order,
+            journey=self.j1,
+            cargo=1,
+            seat=1,
+        )
 
-            res = self.client.get(
-                JOURNEY_URL,
-                {"tickets_left": min_free},
-            )
+        min_free = (
+            self.train.cargo_num * self.train.places_in_cargo - 1
+        )
 
-            # Both journeys should be returned (j2 has full capacity)
-            returned_ids = {item["id"] for item in res.data}
+        res = self.client.get(JOURNEY_URL, {"tickets_left": min_free})
+        returned_ids = {item["id"] for item in res.data}
 
-            self.assertIn(self.j1.id, returned_ids)
-            self.assertIn(self.j2.id, returned_ids)
+        self.assertIn(self.j1.id, returned_ids)
+        self.assertIn(self.j2.id, returned_ids)
 
-            # Now require more free seats than j1 has
-            res = self.client.get(
-                JOURNEY_URL,
-                {"tickets_left": min_free + 1},
-            )
+        # Now require more than j1 has left
+        res = self.client.get(JOURNEY_URL, {"tickets_left": min_free + 1})
+        returned_ids = {item["id"] for item in res.data}
 
-            returned_ids = {item["id"] for item in res.data}
-
-            self.assertNotIn(self.j1.id, returned_ids)
-            self.assertIn(self.j2.id, returned_ids)
+        self.assertNotIn(self.j1.id, returned_ids)
+        self.assertIn(self.j2.id, returned_ids)
