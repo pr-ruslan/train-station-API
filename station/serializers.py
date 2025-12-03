@@ -111,6 +111,7 @@ class JourneySerializer(serializers.ModelSerializer):
 
         return data
 
+
 class JourneyListSerializer(JourneySerializer):
     route = RouteListSerializer(read_only=True)
     train = TrainListSerializer(read_only=True)
@@ -140,6 +141,7 @@ class TicketSerializer(serializers.ModelSerializer):
                   "order",
                   "journey")
 
+
 class TicketListSerializer(TicketSerializer):
     journey = JourneyListSerializer(many=False, read_only=True)
 
@@ -148,6 +150,7 @@ class OrderSerializer(serializers.ModelSerializer):
     tickets = TicketSerializer(many=True,
                                read_only=False,
                                allow_empty=False)
+
     class Meta:
         model = Order
         fields = ("id",
@@ -170,4 +173,3 @@ class OrderListSerializer(OrderSerializer):
         read_only=True,
         many=True
     )
-

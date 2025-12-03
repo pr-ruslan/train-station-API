@@ -166,10 +166,3 @@ MIT License\
 Feel free to modify and use as needed.
 
 ------------------------------------------------------------------------
-
-
-
-TODOs
-
-- tests
-- flake8

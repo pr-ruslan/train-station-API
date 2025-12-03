@@ -48,7 +48,7 @@ class TrainTypeViewSet(
     mixins.CreateModelMixin,
     mixins.ListModelMixin,
     viewsets.GenericViewSet
-    ):
+):
     queryset = TrainType.objects.all()
     serializer_class = TrainTypeSerializer
     permission_classes = (IsAuthenticated,)
@@ -95,7 +95,7 @@ class StationViewSet(
         name = self.request.query_params.get("name")
         queryset = Station.objects.all()
         if name:
-           queryset = queryset.filter(name__icontains=name)
+            queryset = queryset.filter(name__icontains=name)
         return queryset
 
 
@@ -164,7 +164,7 @@ class TrainViewSet(
 
     def get_queryset(self):
         queryset = Train.objects.select_related(
-        "train_type"
+            "train_type"
         )
         name = self.request.query_params.get("name")
 
@@ -183,10 +183,11 @@ class OrderPagination(PageNumberPagination):
     list=extend_schema(summary="List orders for current user"),
     create=extend_schema(summary="Create an order"),
 )
-class OrderViewSet(mixins.CreateModelMixin,
-                   mixins.ListModelMixin,
-                   GenericViewSet
-                  ):
+class OrderViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    GenericViewSet
+):
     queryset = Order.objects.prefetch_related(
         "tickets",
         "tickets__journey",

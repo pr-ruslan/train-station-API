@@ -1,6 +1,3 @@
-import tempfile
-import os
-
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -13,25 +10,12 @@ from station.models import (
     TrainType,
     Train,
     Route,
-    Crew,
     Journey,
     Order,
 )
 from station.serializers import (
-    CrewSerializer,
-    StationSerializer,
-    TrainTypeSerializer,
-    TrainSerializer,
     TrainListSerializer,
     TrainDetailSerializer,
-    RouteSerializer,
-    RouteListSerializer,
-    RouteDetailSerializer,
-    OrderSerializer,
-    OrderListSerializer,
-    JourneySerializer,
-    JourneyListSerializer,
-    JourneyDetailSerializer,
 )
 
 TRAIN_URL = reverse("station:train-list")
@@ -154,7 +138,7 @@ class AuthenticatedTrainApiTests(TestCase):
                 "train": train.id,
                 "route": route.id,
                 "departure_time": "2025-06-01T14:00:00Z",
-                "arrival_time": "2025-06-01T10:00:00Z",  # arrival before departure
+                "arrival_time": "2025-06-01T10:00:00Z",
             }
 
             res = self.client.post(JOURNEY_URL, payload, format="json")
@@ -172,13 +156,23 @@ class AuthenticatedTrainApiTests(TestCase):
             self.client.force_authenticate(self.user)
 
             # Create stations
-            self.s1 = Station.objects.create(name="Kyiv", latitude=0, longitude=0)
-            self.s2 = Station.objects.create(name="Lviv", latitude=1, longitude=1)
-            self.s3 = Station.objects.create(name="Odesa", latitude=2, longitude=2)
+            self.s1 = Station.objects.create(
+                name="Kyiv", latitude=0, longitude=0
+            )
+            self.s2 = Station.objects.create(
+                name="Lviv", latitude=1, longitude=1
+            )
+            self.s3 = Station.objects.create(
+                name="Odesa", latitude=2, longitude=2
+            )
 
             # Create routes
-            self.r1 = Route.objects.create(name="R1", source=self.s1, destination=self.s2)
-            self.r2 = Route.objects.create(name="R2", source=self.s2, destination=self.s3)
+            self.r1 = Route.objects.create(
+                name="R1", source=self.s1, destination=self.s2
+            )
+            self.r2 = Route.objects.create(
+                name="R2", source=self.s2, destination=self.s3
+            )
 
             # Create trains
             self.train = sample_train()
@@ -234,7 +228,9 @@ class AuthenticatedTrainApiTests(TestCase):
         def test_filter_by_tickets_left(self):
             """Test filtering by number of free seats."""
             # j1 will have 1 ticket sold
-            Order.objects.create(journey=self.j1, user=self.user, seat_number=1)
+            Order.objects.create(
+                journey=self.j1, user=self.user, seat_number=1
+            )
 
             # Request journeys with at least full capacity minus 1 ticket
             min_free = (
