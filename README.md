@@ -1,80 +1,59 @@
 # Train Station API
 
-A Django REST API for managing stations, trains, routes, crew, journeys,
-and orders.\
-This project is fully containerized with **Docker** and uses
+A Django REST API for managing **stations, trains, routes, journeys,
+crew, and orders**.\
+The project is fully containerized with **Docker** and uses
 **PostgreSQL** as its database.
 
 ------------------------------------------------------------------------
 
-## 🚀 Features
+## 📥 Installation (From GitHub)
 
--   Django REST Framework API
--   PostgreSQL database
--   Dockerized development environment
--   Custom Django management command `wait_for_db`
--   Automatic migrations on startup
--   Modular architecture (Stations, Trains, Routes, Journeys, Orders)
--   Ready for deployment
+### 1️⃣ Clone the repository
 
-------------------------------------------------------------------------
+``` bash
+git clone https://github.com/pr-ruslan/train-station-API.git
+cd train-station-API
+```
 
-## 📦 Project Structure
-
-    train-station-API/
-    │── station/                      # Main Django app
-    │   ├── models/                   # Database models
-    │   ├── serializers/              # API serializers
-    │   ├── views/                    # API views
-    │   ├── urls.py                   # App URL routes
-    │   ├── management/
-    │   │   ├── commands/
-    │   │   │   └── wait_for_db.py    # Wait for DB before starting server
-    │── train_station_api/            # Project settings
-    │── Dockerfile
-    │── docker-compose.yml
-    │── requirements.txt
-    │── README.md
-
-------------------------------------------------------------------------
-
-## 🐳 Running the Project With Docker
-
-### 1️⃣ Build and start containers
+### 2️⃣ Start the project with Docker
 
 ``` bash
 docker-compose up --build
 ```
 
-### 2️⃣ Stop all containers
+The API will be available at:\
+👉 **http://localhost:8000**
+
+------------------------------------------------------------------------
+
+## 🐳 Docker Commands
+
+Start containers:
+
+``` bash
+docker-compose up --build
+```
+
+Stop containers:
 
 ``` bash
 docker-compose down
 ```
 
-### 3️⃣ Stop and remove EVERYTHING (containers, volumes)
+Stop & remove ALL containers + volumes:
 
 ``` bash
 docker-compose down -v
 ```
 
-------------------------------------------------------------------------
-
-## 🧰 Useful Docker Commands
-
-### View running containers
-
-``` bash
-docker ps
-```
-
-### Run a command inside the app container
+Run a command inside the app container:
 
 ``` bash
 docker exec -it train-station-api-app-1 bash
 ```
 
-### Create Django superuser inside container
+Create a Django superuser:
 
 ``` bash
 docker exec -it train-station-api-app-1 python manage.py createsuperuser
@@ -82,30 +61,40 @@ docker exec -it train-station-api-app-1 python manage.py createsuperuser
 
 ------------------------------------------------------------------------
 
-## 🛠 Dockerfile Overview
+## 🧪 Running Tests
 
-``` dockerfile
-FROM python:3.12-slim
+``` bash
+docker exec -it train-station-api-app-1 python manage.py test
+```
 
-WORKDIR /app
+Or using pytest:
 
-RUN apt-get update && apt-get install -y     libpq-dev gcc --no-install-recommends && rm -rf /var/lib/apt/lists/*
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
-
-EXPOSE 8000
-
-CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]
+``` bash
+docker exec -it train-station-api-app-1 pytest
 ```
 
 ------------------------------------------------------------------------
 
-## 🐘 PostgreSQL Configuration
+## 🛠 Tech Overview
 
-### In `docker-compose.yml`:
+-   Python 3.12\
+-   Django + Django REST Framework\
+-   PostgreSQL\
+-   Docker + docker-compose
+
+### Project Structure
+
+    train-station-API/
+    │── station/                 # Main Django app
+    │── train_station_api/       # Settings & configuration
+    │── Dockerfile
+    │── docker-compose.yml
+    │── requirements.txt
+    │── README.md
+
+------------------------------------------------------------------------
+
+## 🐘 PostgreSQL (from docker-compose.yml)
 
 ``` yaml
 db:
@@ -116,53 +105,13 @@ db:
     POSTGRES_PASSWORD: postgres
   ports:
     - "5433:5432"
-  volumes:
-    - postgres_data:/var/lib/postgresql/data
-```
-
-------------------------------------------------------------------------
-
-## 🧩 Custom Management Command
-
-### `wait_for_db.py`
-
-Ensures the Django app waits until PostgreSQL is ready.
-
-``` python
-from django.core.management.base import BaseCommand
-import time
-from psycopg2 import OperationalError
-from django.db import connections
-
-class Command(BaseCommand):
-    def handle(self, *args, **kwargs):
-        self.stdout.write("Waiting for database...")
-
-        db_conn = None
-        while not db_conn:
-            try:
-                db_conn = connections['default']
-                db_conn.cursor()
-            except OperationalError:
-                self.stdout.write("Database unavailable, retrying...")
-                time.sleep(1)
-
-        self.stdout.write(self.style.SUCCESS("Database is ready!"))
-```
-
-------------------------------------------------------------------------
-
-## 🧪 Running Tests
-
-``` bash
-docker exec -it train-station-api-app-1 pytest
 ```
 
 ------------------------------------------------------------------------
 
 ## 📄 License
 
-MIT License\
-Feel free to modify and use as needed.
+MIT License.\
+Feel free to use and modify.
 
 ------------------------------------------------------------------------
