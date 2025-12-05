@@ -95,6 +95,7 @@ class JourneySerializer(serializers.ModelSerializer):
             "id",
             "route",
             "train",
+            "crew",
             "departure_time",
             "arrival_time"
         )
@@ -120,6 +121,8 @@ class JourneyListSerializer(JourneySerializer):
 class JourneyDetailSerializer(JourneySerializer):
     route = RouteDetailSerializer(read_only=True)
     train = TrainDetailSerializer(read_only=True)
+    crew = CrewSerializer(many=True,
+                          read_only=True)
 
 
 class TicketSerializer(serializers.ModelSerializer):
@@ -157,7 +160,8 @@ class OrderSerializer(serializers.ModelSerializer):
                   "created_at",
                   "user",
                   "tickets")
-        read_only_fields = ("user",)
+        read_only_fields = ("user", "tickets", "created_at")
+        extra_kwargs = {"tickets": {"write_only": True}}
 
     def create(self, validated_data):
         with transaction.atomic():
