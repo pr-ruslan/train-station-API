@@ -49,6 +49,12 @@ class Route(models.Model):
     )
     distance = models.PositiveIntegerField()
 
+    def clean(self):
+        if self.source == self.destination:
+            raise ValidationError(
+                "Source and destination stations cannot be the same."
+            )
+
     def __str__(self):
         return f"{self.source} → {self.destination}"
 
@@ -70,6 +76,10 @@ class Journey(models.Model):
     train = models.ForeignKey(
         Train,
         on_delete=models.CASCADE,
+        related_name="journeys"
+    )
+    crew = models.ManyToManyField(
+        Crew,
         related_name="journeys"
     )
     departure_time = models.DateTimeField()
