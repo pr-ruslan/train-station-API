@@ -89,6 +89,12 @@ class RouteDetailSerializer(RouteListSerializer):
 
 
 class JourneySerializer(serializers.ModelSerializer):
+    crew = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Crew.objects.all(),
+        required=False  # 👈 allow no crew input at creation
+    )
+
     class Meta:
         model = Journey
         fields = (
@@ -111,6 +117,13 @@ class JourneySerializer(serializers.ModelSerializer):
                 })
 
         return data
+
+    def create(self, validated_data):
+        crew = validated_data.pop("crew", [])
+        journey = Journey.objects.create(**validated_data)
+        if crew:
+            journey.crew.set(crew)
+        return journey
 
 
 class JourneyListSerializer(JourneySerializer):
