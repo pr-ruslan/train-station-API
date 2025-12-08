@@ -156,6 +156,7 @@ class TicketSerializer(serializers.ModelSerializer):
                   "cargo",
                   "order",
                   "journey")
+        read_only_fields = ("order",)
 
 
 class TicketListSerializer(TicketSerializer):
@@ -164,7 +165,6 @@ class TicketListSerializer(TicketSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     tickets = TicketSerializer(many=True,
-                               read_only=False,
                                allow_empty=False)
 
     class Meta:
