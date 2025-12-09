@@ -9,14 +9,28 @@ The project is fully containerized with **Docker** and uses
 
 ## 📥 Installation (From GitHub)
 
-### 1️⃣ Clone the repository
+### 1. Clone the repository and install requirements
 
 ``` bash
 git clone https://github.com/pr-ruslan/train-station-API.git
 cd train-station-API
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
 ```
 
-### 2️⃣ Start the project with Docker
+### 2. If you run app manually
+Edit your db settings in settings.py
+
+Migrate and run application:
+
+``` bash
+python manage.py migrate
+python manage.py runserver
+```
+
+### 3. Start the project with Docker
 
 ``` bash
 docker-compose up --build
@@ -29,10 +43,10 @@ The API will be available at:\
 
 ## 🐳 Docker Commands
 
-Start containers:
+If you need a sample data to test application:
 
 ``` bash
-docker-compose up --build
+docker-compose exec app python manage.py loaddata  sample_data.json
 ```
 
 Stop containers:
@@ -47,12 +61,6 @@ Stop & remove ALL containers + volumes:
 docker-compose down -v
 ```
 
-Run a command inside the app container:
-
-``` bash
-docker exec -it train-station-api-app-1 bash
-```
-
 Create a Django superuser:
 
 ``` bash
@@ -64,13 +72,7 @@ docker exec -it train-station-api-app-1 python manage.py createsuperuser
 ## 🧪 Running Tests
 
 ``` bash
-docker exec -it train-station-api-app-1 python manage.py test
-```
-
-Or using pytest:
-
-``` bash
-docker exec -it train-station-api-app-1 pytest
+docker exec app python manage.py test
 ```
 
 ------------------------------------------------------------------------
@@ -91,21 +93,6 @@ docker exec -it train-station-api-app-1 pytest
     │── docker-compose.yml
     │── requirements.txt
     │── README.md
-
-------------------------------------------------------------------------
-
-## 🐘 PostgreSQL (from docker-compose.yml)
-
-``` yaml
-db:
-  image: postgres:17.6-alpine3.19
-  environment:
-    POSTGRES_DB: postgres
-    POSTGRES_USER: postgres
-    POSTGRES_PASSWORD: postgres
-  ports:
-    - "5433:5432"
-```
 
 ------------------------------------------------------------------------
 
