@@ -139,6 +139,8 @@ class JourneyDetailSerializer(JourneySerializer):
 
 
 class TicketSerializer(serializers.ModelSerializer):
+    order = serializers.PrimaryKeyRelatedField(read_only=True)
+
     def validate(self, attrs):
         data = super(TicketSerializer, self).validate(attrs)
         Ticket.validate_ticket(
@@ -165,7 +167,8 @@ class TicketListSerializer(TicketSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     tickets = TicketSerializer(many=True,
-                               allow_empty=False)
+                               allow_empty=False,
+                               read_only=False)
 
     class Meta:
         model = Order
@@ -173,8 +176,7 @@ class OrderSerializer(serializers.ModelSerializer):
                   "created_at",
                   "user",
                   "tickets")
-        read_only_fields = ("user", "tickets", "created_at")
-        extra_kwargs = {"tickets": {"write_only": True}}
+        read_only_fields = ("user", "created_at")
 
     def create(self, validated_data):
         with transaction.atomic():
